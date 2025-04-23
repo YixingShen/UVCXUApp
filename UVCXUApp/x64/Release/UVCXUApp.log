@@ -1,0 +1,17 @@
+﻿  stdafx.cpp
+  UVCXUApp.cpp
+UVCXUApp.cpp(129): warning C4244: '=': conversion from 'unsigned long' to 'uint16_t', possible loss of data
+UVCXUApp.cpp(132): warning C4244: '=': conversion from 'unsigned long' to 'uint16_t', possible loss of data
+UVCXUApp.cpp(135): warning C4244: '=': conversion from 'unsigned long' to 'uint16_t', possible loss of data
+UVCXUApp.cpp(145): warning C4244: '=': conversion from 'long' to 'uint8_t', possible loss of data
+UVCXUApp.cpp(298): warning C4018: '<': signed/unsigned mismatch
+UVCXUApp.cpp(287): warning C4473: 'printf' : not enough arguments passed for format string
+  UVCXUApp.cpp(287): note: placeholders and their parameters expect 2 variadic arguments, but 1 were provided
+  UVCXUApp.cpp(287): note: the missing variadic argument 2 is required by format string '%02X'
+UVCXUApp.cpp(172): warning C4101: 'enteredStr': unreferenced local variable
+UVCXUApp.cpp(174): warning C4101: 'bytesReturned': unreferenced local variable
+  Generating code
+  All 27 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  UVCXUApp.vcxproj -> D:\GitClone\UVCXUApp\x64\Release\UVCXUApp.exe
+  UVCXUApp.vcxproj -> D:\GitClone\UVCXUApp\x64\Release\UVCXUApp.pdb (Full PDB)
