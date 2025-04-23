@@ -1,6 +1,6 @@
 # UVCXUApp
 
-A UVC Extension unit Example
+A UVC Extension Unit Example
 
 ```
 Usage: UVCXUApp
