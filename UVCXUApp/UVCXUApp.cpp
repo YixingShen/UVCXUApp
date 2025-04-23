@@ -7,14 +7,6 @@
 #include <mfreadwrite.h>
 #include <vector>
 #include <string>
-
-//#include <ks.h>
-//#include <ksproxy.h>
-//#include <vidcap.h>
-//#include "UVCXUApp.h"
-//#include <ksmedia.h>
-//#include "UVCXUApp.h"
-
 #include <initguid.h>
 #include <uuids.h>
 
@@ -23,14 +15,6 @@
 #include <ksproxy.h>
 #include "UVCXUApp.h"
 #include "getopt.h"
-
-//#include <vidcap.h>
-//#include <ks.h>
-//#include <ksproxy.h>
-//#include <ksmedia.h>
-//#include <initguid.h>
-//#include <uuids.h>
-//#include "UVCXUApp.h"
 
 //Media foundation and DSHOW specific structures, class and variables
 IMFMediaSource *pVideoSource = NULL;
@@ -100,22 +84,22 @@ void usage_long_options() {
 int main(int argc, char **argv)
 {
     static char *deviceName = CAMERA_NAME;
-    static uint32_t g1 = 0x00000000; //1BD7F382
-    static uint16_t g2 = 0x0000; //0EAE
-    static uint16_t g3 = 0x0000; //46AB
-    static uint16_t g4 = 0x0000; //8CB4
-    static uint64_t g5 = 0x000000000000; //9E00E1EC643F
+    static uint32_t g1 = 0x00000000;
+    static uint16_t g2 = 0x0000;
+    static uint16_t g3 = 0x0000;
+    static uint16_t g4 = 0x0000;
+    static uint64_t g5 = 0x000000000000;
     static uint64_t wdataValue = 0;
     static bool toWrite = false;
     static uint8_t xferBytes = 0;
     static uint8_t controlSelectors = 1;
     int opt;
 
-    //while ((opt = getopt_long(argc, argv, shortopts, long_options, NULL)) != EOF)
     while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != EOF)
     {
         //printf("proces index:%d\n", optind);
         //printf("option arg:%s\n", optarg);
+        //printf("opt:%s\n", opt);
 
         switch (opt)
         {
@@ -142,11 +126,11 @@ int main(int argc, char **argv)
             toWrite = true;
             break;
         case 'x':
-            xferBytes = strtol(optarg, NULL, 16);
+            xferBytes = strtol(optarg, NULL, 10);
             break;
-        //case 'c':
-        //    controlSelectors = strtol(optarg, NULL, 16);
-        //    break;
+        case 'c':
+            controlSelectors = strtol(optarg, NULL, 10);
+            break;
         case '?':
         default:
             usage_long_options();
