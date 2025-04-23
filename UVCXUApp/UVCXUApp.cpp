@@ -159,14 +159,14 @@ int main(int argc, char **argv)
 	size_t returnValue;
     BYTE rdataByesArray[64] = { 0 };
     BYTE wdataByesArray[64] = {
-        (uint8_t)(wdataValue >> 56),
-        (uint8_t)(wdataValue >> 48),
-        (uint8_t)(wdataValue >> 40),
-        (uint8_t)(wdataValue >> 32),
-        (uint8_t)(wdataValue >> 24),
-        (uint8_t)(wdataValue >> 16),
-        (uint8_t)(wdataValue >> 8),
         (uint8_t)(wdataValue >> 0),
+        (uint8_t)(wdataValue >> 8),
+        (uint8_t)(wdataValue >> 16),
+        (uint8_t)(wdataValue >> 24),
+        (uint8_t)(wdataValue >> 32),
+        (uint8_t)(wdataValue >> 40),
+        (uint8_t)(wdataValue >> 48),
+        (uint8_t)(wdataValue >> 56),
     };
 
     if (xferBytes > sizeof(wdataByesArray)) { 
