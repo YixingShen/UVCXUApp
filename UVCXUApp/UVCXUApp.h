@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef DSHOW_ONLY
 #include <mfapi.h>
 #include <mfplay.h>
 #include <mfreadwrite.h>
@@ -7,7 +8,8 @@
 #include <string>
 #include <ks.h>
 #include <ksproxy.h>
-#include <vidcap.h>
+//#include <vidcap.h>
+#endif
 
 //Macro to check the HR result
 #define CHECK_HR_RESULT(hr, msg, ...) if (hr != S_OK) {printf("info: Function: %s, %s failed, Error code: 0x%.2x \n", __FUNCTION__, msg, hr, __VA_ARGS__); goto done; }

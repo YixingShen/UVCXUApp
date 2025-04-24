@@ -1,30 +1,59 @@
 // UVCXUApp.cpp : Defines the entry point for the console application.
 //
-
 #include "stdafx.h"
+#include <vidcap.h>
+#ifndef DSHOW_ONLY
 #include <mfapi.h>
 #include <mfplay.h>
 #include <mfreadwrite.h>
+#endif
 #include <vector>
 #include <string>
 #include <initguid.h>
 #include <uuids.h>
-
 #include <ks.h>
 #include <ksmedia.h>
 #include <ksproxy.h>
 #include "UVCXUApp.h"
 #include "getopt.h"
 
+#ifdef DSHOW_ONLY
+#define MaxVideoDeviceNum 20
+#include <atlconv.h>
+#include <algorithm>
+#pragma comment(lib,"strmbase.lib")
+
+IBaseFilter *pVideoSource = NULL;
+LPTSTR FriendlyName[MaxVideoDeviceNum];
+
+void lptstr2str(LPTSTR tch, char* &pch)
+{
+#ifndef UNICODE
+    std::memcpy(pch, tch, strlen(tch) + 1);
+#else
+    size_t n =
+        sizeof(TCHAR) / sizeof(char)* wcsnlen(tch, std::string::npos);
+    pch = new char[n + 1];
+    std::memcpy(pch, tch, n + 1);
+    int len = n - std::count(pch, pch + n, NULL);
+    std::remove(pch, pch + n, NULL);
+    pch[len] = NULL;
+#endif
+}
+#endif
+
+#ifndef DSHOW_ONLY
 //Media foundation and DSHOW specific structures, class and variables
 IMFMediaSource *pVideoSource = NULL;
 IMFAttributes *pVideoConfig = NULL;
 IMFActivate **ppVideoDevices = NULL;
 IMFSourceReader *pVideoReader = NULL;
+WCHAR *szFriendlyName = NULL;
+#endif
 
 //Other variables
 UINT32 noOfVideoDevices = 0;
-WCHAR *szFriendlyName = NULL;
+
 #define CAMERA_NAME "TinyUSB UVC"
 
 #define SAFE_RELEASE(x) { if (x) x->Release(); x = NULL; }
@@ -48,11 +77,11 @@ void usage_long_options() {
     printf("Usage: UVCXUApp\n");
     printf("Options:\n");
     printf(" --deviceName STR             specify device name (e.g., USB Camera)\n");
-    printf(" --g1 HEX                XU GUID g1 32bit Hax value\n");
-    printf(" --g2 HEX                XU GUID g2 16bit Hax value\n");
-    printf(" --g3 HEX                XU GUID g3 16bit Hax value\n");
-    printf(" --g4 HEX                XU GUID g4 16bit Hax value\n");
-    printf(" --g5 HEX                XU GUID g5 48bit Hax value\n");
+    printf(" --g1 HEX                     XU GUID g1 32bit Hax value\n");
+    printf(" --g2 HEX                     XU GUID g2 16bit Hax value\n");
+    printf(" --g3 HEX                     XU GUID g3 16bit Hax value\n");
+    printf(" --g4 HEX                     XU GUID g4 16bit Hax value\n");
+    printf(" --g5 HEX                     XU GUID g5 48bit Hax value\n");
     printf(" --wdataValue HEX             Write 64bit data to wdataByesArray\n");
     printf(" --xferBytes Decimal          xfer Bytes (1 ~ 64)\n");
     printf(" --controlSelectors Decimal   control Selectors (1 ~ 32)\n");
@@ -189,35 +218,44 @@ int main(int argc, char **argv)
     printf("xferBytes %d\n", xferBytes);
     printf("controlSelectors %d\n", controlSelectors);
 
-	//Get all video devices
-	GetVideoDevices();
+    //Get all video devices
+    GetVideoDevices();
 
-	printf("Video Devices connected:\n");
-	for (UINT32 i = 0; i < noOfVideoDevices; i++)
-	{
-		//Get the device names
-		GetVideoDeviceFriendlyNames(i);
-		wcstombs_s(&returnValue, videoDevName[i], MAX_PATH, szFriendlyName, MAX_PATH);
-		printf("%d: %s\n", i, videoDevName[i]);
+    printf("Video Devices connected:\n");
+    for (UINT32 i = 0; i < noOfVideoDevices; i++)
+    {
+        //Get the device names
+#ifdef DSHOW_ONLY
+        char* strFriendlyName;
+        lptstr2str(FriendlyName[i], strFriendlyName);
+        printf("%d: %s\n", i, strFriendlyName);
+
+        if (!(strcmp(strFriendlyName, deviceName)))
+            selectedVal = i;
+#else
+        GetVideoDeviceFriendlyNames(i);
+        wcstombs_s(&returnValue, videoDevName[i], MAX_PATH, szFriendlyName, MAX_PATH);
+        printf("%d: %s\n", i, videoDevName[i]);
 
         if (!(strcmp(videoDevName[i], deviceName)))
-			selectedVal = i;
-	}
+            selectedVal = i;
+#endif
+    }
 
-	//Find to UVC extension unit
-	if (selectedVal != 0xFFFFFFFF)
-	{
+    //Find to UVC extension unit
+    if (selectedVal != 0xFFFFFFFF)
+    {
         printf("\nFound %s device\n", deviceName);
 
-		//Initialize the selected device
-		InitVideoDevice(selectedVal);
+        //Initialize the selected device
+        InitVideoDevice(selectedVal);
 
         if (toWrite == true)
-			flags = KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_TOPOLOGY;
-		else
-			flags = KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_TOPOLOGY;
+            flags = KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_TOPOLOGY;
+        else
+            flags = KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_TOPOLOGY;
 
-		printf("\nTrying to invoke UVC extension unit...\n");
+        printf("\nTrying to invoke UVC extension unit...\n");
 
         //Find Extension Node
         DWORD numNodes = 0;
@@ -267,7 +305,7 @@ int main(int argc, char **argv)
         }
         else {
             ExtensionNode = 0;
-            printf("Did not find GUID ExtensionNode. Try ExtensionNode = %d\n");
+            printf("Did not find GUID ExtensionNode. Try ExtensionNode = %d\n", ExtensionNode);
         }
 
         if (flags == (KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_TOPOLOGY)) {
@@ -294,48 +332,129 @@ int main(int argc, char **argv)
             }
             printf("hr = 0x%08X\n", hr);
         }
-	}
-	else {
+    }
+    else {
         printf("\nDid not find %s device\n\n", deviceName);
-	}
+    }
 
-	//Release all the video device resources
-	for (UINT32 i = 0; i < noOfVideoDevices; i++)
-	{
-		SafeRelease(&ppVideoDevices[i]);
-	}
+    //Release all the video device resources
+#ifdef DSHOW_ONLY
+    if (pVideoSource) {
+        SAFE_RELEASE(pVideoSource);
+    }
+#else
+    for (UINT32 i = 0; i < noOfVideoDevices; i++)
+    {
+       SafeRelease(&ppVideoDevices[i]);
+    }
 
-	CoTaskMemFree(ppVideoDevices);
-	SafeRelease(&pVideoConfig);
-	SafeRelease(&pVideoSource);
-	CoTaskMemFree(szFriendlyName);
+    CoTaskMemFree(ppVideoDevices);
+    SafeRelease(&pVideoConfig);
+    SafeRelease(&pVideoSource);
+    CoTaskMemFree(szFriendlyName);
+#endif
 
-	printf("\nExiting App in 10 msec...");
-	Sleep(10);
+    CoUninitialize();
+    printf("\nExiting App in 10 msec...");
+    Sleep(10);
 
     return 0;
 }
 
 //Function to get UVC video devices
+#ifdef DSHOW_ONLY
+HRESULT GetVideoDevices(void)
+{
+    HRESULT hr;
+    IBaseFilter *pSrc = NULL;
+    IMoniker *pMoniker = NULL;
+    ULONG cFetched;
+    noOfVideoDevices = 0;
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+
+    // Create the system device enumerator
+    ICreateDevEnum *pDevEnum = NULL;
+    hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC, IID_ICreateDevEnum, (void**)&pDevEnum);
+    if (FAILED(hr))
+    {
+        printf("Couldn't create system enumerator!  hr=0x%x", hr);
+        return hr;
+    }
+
+    // Create an enumerator for the video capture devices
+    IEnumMoniker *pClassEnum = NULL;
+    hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pClassEnum, 0);
+    if (FAILED(hr))
+    {
+        printf("Couldn't create class enumerator!  hr=0x%x", hr);
+        return hr;
+    }
+
+    // If there are no enumerators for the requested type, then 
+    // CreateClassEnumerator will succeed, but pClassEnum will be NULL.
+    if (pClassEnum == NULL)
+    {
+        printf("No video capture device was detected.");
+        return E_FAIL;
+    }
+
+    // Use the first video capture device on the device list.
+    // Note that if the Next() call succeeds but there are no monikers,
+    // it will return S_FALSE (which is not a failure).  Therefore, we
+    // check that the return code is S_OK instead of using SUCCEEDED() macro.3
+    while ((pClassEnum->Next(1, &pMoniker, &cFetched)) == S_OK)
+    {
+        IPropertyBag *pPropBag;
+        HRESULT hr = pMoniker->BindToStorage(0, 0, IID_IPropertyBag, (void**)&pPropBag);
+
+        if (SUCCEEDED(hr))
+        {
+            VARIANT varName;
+            LPOLESTR strName = NULL;
+            VariantInit(&varName);
+            hr = pPropBag->Read(L"FriendlyName", &varName, 0);
+            if (SUCCEEDED(hr))
+            {
+                // Display the name in your UI somehow.
+                hr = pMoniker->GetDisplayName(NULL, NULL, &strName);
+
+                USES_CONVERSION;
+                //LPTSTR DevicePath = OLE2T(strName);
+                //LPTSTR FriendlyName = W2T(varName.bstrVal);
+                //m_DeviceList.DeviceItems[m_DeviceList.DeviceNum].FriendlyName = W2T(varName.bstrVal);
+                if (noOfVideoDevices < MaxVideoDeviceNum) {
+                    FriendlyName[noOfVideoDevices] = W2T(varName.bstrVal);
+                    noOfVideoDevices++;
+                }
+            }
+            pPropBag->Release();
+        }
+        pMoniker->Release();
+    }
+    pClassEnum->Release();
+
+    return hr;
+}
+#else
 HRESULT GetVideoDevices()
 {
-	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-	MFStartup(MF_VERSION);
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    MFStartup(MF_VERSION);
 
-	// Create an attribute store to specify the enumeration parameters.
-	HRESULT hr = MFCreateAttributes(&pVideoConfig, 1);
-	CHECK_HR_RESULT(hr, "Create attribute store");
+    // Create an attribute store to specify the enumeration parameters.
+    HRESULT hr = MFCreateAttributes(&pVideoConfig, 1);
+    CHECK_HR_RESULT(hr, "Create attribute store");
 
-	// Source type: video capture devices
-	hr = pVideoConfig->SetGUID(
-		MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE,
-		MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID
-	);
-	CHECK_HR_RESULT(hr, "Video capture device SetGUID");
+    // Source type: video capture devices
+    hr = pVideoConfig->SetGUID(
+      MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE,
+      MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID
+    );
+    CHECK_HR_RESULT(hr, "Video capture device SetGUID");
 
-	// Enumerate devices.
-	hr = MFEnumDeviceSources(pVideoConfig, &ppVideoDevices, &noOfVideoDevices);
-	CHECK_HR_RESULT(hr, "Device enumeration");
+    // Enumerate devices.
+    hr = MFEnumDeviceSources(pVideoConfig, &ppVideoDevices, &noOfVideoDevices);
+    CHECK_HR_RESULT(hr, "Device enumeration");
 
 done:
 	return hr;
@@ -344,52 +463,91 @@ done:
 //Function to get device friendly name
 HRESULT GetVideoDeviceFriendlyNames(int deviceIndex)
 {
-	// Get the the device friendly name.
-	UINT32 cchName;
+    // Get the the device friendly name.
+    UINT32 cchName;
 
-	HRESULT hr = ppVideoDevices[deviceIndex]->GetAllocatedString(
-		MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
-		&szFriendlyName, &cchName);
-	CHECK_HR_RESULT(hr, "Get video device friendly name");
+    HRESULT hr = ppVideoDevices[deviceIndex]->GetAllocatedString(
+        MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
+        &szFriendlyName, &cchName);
+    CHECK_HR_RESULT(hr, "Get video device friendly name");
 
 done:
-	return hr;
+    return hr;
 }
+#endif
 
 //Function to initialize video device
+#ifdef DSHOW_ONLY
 HRESULT InitVideoDevice(int deviceIndex)
 {
-	HRESULT hr = ppVideoDevices[deviceIndex]->ActivateObject(IID_PPV_ARGS(&pVideoSource));
-	CHECK_HR_RESULT(hr, "Activating video device");
+    HRESULT hr;
+    ICreateDevEnum *pDevEnum = NULL;
+    IEnumMoniker *pClassEnum = NULL;
+    IMoniker *pMoniker = NULL;
 
-	// Create a source reader.
-	hr = MFCreateSourceReaderFromMediaSource(pVideoSource, pVideoConfig, &pVideoReader);
-	CHECK_HR_RESULT(hr, "Creating video source reader");
+    hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC, IID_ICreateDevEnum, (void**)&pDevEnum);
+    CHECK_HR_RESULT(hr, "CoCreateInstance");
+
+    hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pClassEnum, 0);
+    CHECK_HR_RESULT(hr, "CreateClassEnumerator");
+
+    ULONG cFetched;
+
+    for (int i = 0; i <= deviceIndex; i++)
+    {
+        hr = pClassEnum->Next(1, &pMoniker, &cFetched);
+        CHECK_HR_RESULT(hr, "pClassEnum->Next");
+    }
+
+    hr = pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pVideoSource);
+    CHECK_HR_RESULT(hr, "pMoniker->BindToObject");
 
 done:
-	return hr;
+    return hr;
 }
+#else
+HRESULT InitVideoDevice(int deviceIndex)
+{
+    HRESULT hr = ppVideoDevices[deviceIndex]->ActivateObject(IID_PPV_ARGS(&pVideoSource));
+    CHECK_HR_RESULT(hr, "Activating video device");
+
+    // Create a source reader.
+    hr = MFCreateSourceReaderFromMediaSource(pVideoSource, pVideoConfig, &pVideoReader);
+    CHECK_HR_RESULT(hr, "Creating video source reader");
+
+done:
+    return hr;
+}
+#endif
 
 //Function to set/get parameters of UVC extension unit
 HRESULT SetGetExtensionUnit(GUID xuGuid, DWORD dwExtensionNode, ULONG xuPropertyId, ULONG flags, void *data, int len, ULONG *bytesReturned)
 {
-	GUID pNodeType;
-	IUnknown *unKnown;
-	IKsControl * ks_control = NULL;
-	IKsTopologyInfo * pKsTopologyInfo = NULL;
-	KSP_NODE kspNode;
+    KSP_NODE kspNode;
+#if 0
+    GUID pNodeType;
+    IUnknown *unKnown;
+    IKsControl * ks_control = NULL;
+    IKsTopologyInfo * pKsTopologyInfo = NULL;
 
-	HRESULT hr = pVideoSource->QueryInterface(__uuidof(IKsTopologyInfo), (void **)&pKsTopologyInfo);
-	CHECK_HR_RESULT(hr, "IMFMediaSource::QueryInterface(IKsTopologyInfo)");
+    HRESULT hr = pVideoSource->QueryInterface(__uuidof(IKsTopologyInfo), (void **)&pKsTopologyInfo);
+    CHECK_HR_RESULT(hr, "IMFMediaSource::QueryInterface(IKsTopologyInfo)");
 
-	hr = pKsTopologyInfo->get_NodeType(dwExtensionNode, &pNodeType);
-	CHECK_HR_RESULT(hr, "IKsTopologyInfo->get_NodeType(...)");
+    hr = pKsTopologyInfo->get_NodeType(dwExtensionNode, &pNodeType);
+    CHECK_HR_RESULT(hr, "IKsTopologyInfo->get_NodeType(...)");
 
-	hr = pKsTopologyInfo->CreateNodeInstance(dwExtensionNode, IID_IUnknown, (LPVOID *)&unKnown);
-	CHECK_HR_RESULT(hr, "ks_topology_info->CreateNodeInstance(...)");
+    hr = pKsTopologyInfo->CreateNodeInstance(dwExtensionNode, IID_IUnknown, (LPVOID *)&unKnown);
+    CHECK_HR_RESULT(hr, "ks_topology_info->CreateNodeInstance(...)");
 
-	hr = unKnown->QueryInterface(__uuidof(IKsControl), (void **)&ks_control);
-	CHECK_HR_RESULT(hr, "ks_topology_info->QueryInterface(...)");
+    hr = unKnown->QueryInterface(__uuidof(IKsControl), (void **)&ks_control);
+    CHECK_HR_RESULT(hr, "ks_topology_info->QueryInterface(...)");
+#else
+    IKsControl * ks_control = NULL;
+
+    HRESULT hr = pVideoSource->QueryInterface(__uuidof(IKsControl), (void **)&ks_control);
+    CHECK_HR_RESULT(hr, "pVideoSource->QueryInterface(ks_control)");
+#endif
+
     kspNode.Property.Set = xuGuid;             // XU GUID
     kspNode.NodeId = (ULONG)dwExtensionNode;   // XU Node ID
     kspNode.Property.Id = xuPropertyId;        // XU control ID
@@ -399,6 +557,6 @@ HRESULT SetGetExtensionUnit(GUID xuGuid, DWORD dwExtensionNode, ULONG xuProperty
     CHECK_HR_RESULT(hr, "ks_control->KsProperty(...)");
 
 done:
-	SafeRelease(&ks_control);
-	return hr;
+    SafeRelease(&ks_control);
+    return hr;
 }
