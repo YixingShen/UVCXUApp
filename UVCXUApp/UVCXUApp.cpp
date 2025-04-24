@@ -308,7 +308,7 @@ int main(int argc, char **argv)
             printf("Did not find GUID ExtensionNode. Try ExtensionNode = %d\n", ExtensionNode);
         }
 
-        if (flags == (KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_TOPOLOGY)) {
+        if (toWrite) {
             printf("Set Control (%d)\n", controlSelectors);
 
             HRESULT hr = SetGetExtensionUnit(xuAppGuid, ExtensionNode, controlSelectors, flags, (void*)wdataByesArray, xferBytes, &bytesReturned);
