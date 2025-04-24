@@ -250,7 +250,7 @@ int main(int argc, char **argv)
         //Initialize the selected device
         InitVideoDevice(selectedVal);
 
-        if (toWrite == true)
+        if (toWrite)
             flags = KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_TOPOLOGY;
         else
             flags = KSPROPERTY_TYPE_GET | KSPROPERTY_TYPE_TOPOLOGY;
