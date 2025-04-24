@@ -26,7 +26,6 @@ IMFSourceReader *pVideoReader = NULL;
 UINT32 noOfVideoDevices = 0;
 WCHAR *szFriendlyName = NULL;
 #define CAMERA_NAME "TinyUSB UVC"
-DWORD ExtensionNode;
 
 #define SAFE_RELEASE(x) { if (x) x->Release(); x = NULL; }
 
@@ -94,6 +93,8 @@ int main(int argc, char **argv)
     static uint8_t xferBytes = 0;
     static uint8_t controlSelectors = 1;
     int opt;
+    UINT32 ExtensionNode = 0xFFFFFFFF;
+    UINT32 selectedVal = 0xFFFFFFFF;
 
     while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != EOF)
     {
@@ -152,9 +153,7 @@ int main(int argc, char **argv)
         } 
     };
 
-	HRESULT hr = S_OK;
 	CHAR enteredStr[MAX_PATH], videoDevName[20][MAX_PATH];
-	UINT32 selectedVal = 0xFFFFFFFF;
 	ULONG flags, bytesReturned;
 	size_t returnValue;
     BYTE rdataByesArray[64] = { 0 };
@@ -184,8 +183,9 @@ int main(int argc, char **argv)
 
     printf("deviceName %s\n", deviceName);
     printf("GUID {%08X-%04X-%04X-%04X-%012llX}\n", g1, g2, g3, g4, g5);
-    printf("toWrite %d\n", toWrite);
-    printf("wdataValue 0x%llX\n", wdataValue);
+    if (toWrite) {
+        printf("wdataValue 0x%llX\n", wdataValue);
+    }
     printf("xferBytes %d\n", xferBytes);
     printf("controlSelectors %d\n", controlSelectors);
 
@@ -204,7 +204,7 @@ int main(int argc, char **argv)
 			selectedVal = i;
 	}
 
-	//Specific to UVC extension unit in AN75779 appnote firmware
+	//Find to UVC extension unit
 	if (selectedVal != 0xFFFFFFFF)
 	{
         printf("\nFound %s device\n", deviceName);
@@ -230,8 +230,9 @@ int main(int argc, char **argv)
         HRESULT hr = pVideoSource->QueryInterface(__uuidof(IKsTopologyInfo), (void **)&pKsTopologyInfo);
 
         pKsTopologyInfo->get_NumNodes(&numNodes);
+        printf("get_NumNodes %d\n", numNodes);
 
-        for (DWORD ulNode = 0; ulNode< numNodes; ulNode++)
+        for (UINT32 ulNode = 0; ulNode< numNodes; ulNode++)
         {
             pKsTopologyInfo->get_NodeType(ulNode, &guidNodeType);
 
@@ -261,30 +262,37 @@ int main(int argc, char **argv)
 
         SAFE_RELEASE(pKsTopologyInfo);
 
-        printf("toWrite %d ExtensionNode %d controlSelectors %d\n", toWrite, ExtensionNode, controlSelectors);
+        if (ExtensionNode != 0xFFFFFFFF) {
+            printf("Find GUID ExtensionNode = %d\n", ExtensionNode);
+        }
+        else {
+            ExtensionNode = 0;
+            printf("Did not find GUID ExtensionNode. Try ExtensionNode = %d\n");
+        }
 
         if (flags == (KSPROPERTY_TYPE_SET | KSPROPERTY_TYPE_TOPOLOGY)) {
-            if (S_OK != SetGetExtensionUnit(xuAppGuid, ExtensionNode, controlSelectors, flags, (void*)wdataByesArray, xferBytes, &bytesReturned)) {
+            printf("Set Control (%d)\n", controlSelectors);
+
+            HRESULT hr = SetGetExtensionUnit(xuAppGuid, ExtensionNode, controlSelectors, flags, (void*)wdataByesArray, xferBytes, &bytesReturned);
+            if (hr == S_OK) {
                 printf("xferBytes %d bytesReturned %d\n", xferBytes, bytesReturned);
 
                 for (int i = 0; i < xferBytes; i++)
-                    printf("w[%d] 0x%02X\n", wdataByesArray[i]);
+                    printf("w[%d] 0x%02X\n", i, wdataByesArray[i]);
             }
-            else {
-                printf("write fail!\n");
-            }
+            printf("hr = 0x%08X\n", hr);
         }
         else
         {
-            if (S_OK != SetGetExtensionUnit(xuAppGuid, ExtensionNode, controlSelectors, flags, (void*)rdataByesArray, xferBytes, &bytesReturned)) {
+            printf("Get Control (%d)\n", controlSelectors);
+            HRESULT hr = SetGetExtensionUnit(xuAppGuid, ExtensionNode, controlSelectors, flags, (void*)rdataByesArray, xferBytes, &bytesReturned);
+            if (hr == S_OK) {
                 printf("xferBytes %d bytesReturned %d\n", xferBytes, bytesReturned);
 
                 for (int i = 0; i < bytesReturned; i++)
                     printf("r[%d] 0x%02X\n", i, rdataByesArray[i]);
             }
-            else {
-                printf("write fail!\n");
-            }
+            printf("hr = 0x%08X\n", hr);
         }
 	}
 	else {
@@ -302,8 +310,8 @@ int main(int argc, char **argv)
 	SafeRelease(&pVideoSource);
 	CoTaskMemFree(szFriendlyName);
 
-	printf("\nExiting App in 5 sec...");
-	Sleep(5000);
+	printf("\nExiting App in 10 msec...");
+	Sleep(10);
 
     return 0;
 }
