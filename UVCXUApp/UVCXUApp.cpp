@@ -421,7 +421,6 @@ HRESULT GetVideoDevices(void)
                 USES_CONVERSION;
                 //LPTSTR DevicePath = OLE2T(strName);
                 //LPTSTR FriendlyName = W2T(varName.bstrVal);
-                //m_DeviceList.DeviceItems[m_DeviceList.DeviceNum].FriendlyName = W2T(varName.bstrVal);
                 if (noOfVideoDevices < MaxVideoDeviceNum) {
                     FriendlyName[noOfVideoDevices] = W2T(varName.bstrVal);
                     noOfVideoDevices++;
