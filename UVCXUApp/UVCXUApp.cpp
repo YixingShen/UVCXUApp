@@ -339,9 +339,7 @@ int main(int argc, char **argv)
 
     //Release all the video device resources
 #ifdef DSHOW_ONLY
-    if (pVideoSource) {
-        SAFE_RELEASE(pVideoSource);
-    }
+    SAFE_RELEASE(pVideoSource);
 #else
     for (UINT32 i = 0; i < noOfVideoDevices; i++)
     {
@@ -386,6 +384,7 @@ HRESULT GetVideoDevices(void)
     hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pClassEnum, 0);
     if (FAILED(hr))
     {
+        pDevEnum->Release();
         printf("Couldn't create class enumerator!  hr=0x%x", hr);
         return hr;
     }
@@ -431,7 +430,7 @@ HRESULT GetVideoDevices(void)
         pMoniker->Release();
     }
     pClassEnum->Release();
-
+    pDevEnum->Release();
     return hr;
 }
 #else
@@ -499,6 +498,7 @@ HRESULT InitVideoDevice(int deviceIndex)
     }
 
     hr = pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pVideoSource);
+    pMoniker->Release();
     CHECK_HR_RESULT(hr, "pMoniker->BindToObject");
 
 done:
