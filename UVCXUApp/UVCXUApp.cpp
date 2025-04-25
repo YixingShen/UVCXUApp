@@ -355,7 +355,7 @@ int main(int argc, char **argv)
 #endif
 
     CoUninitialize();
-    printf("\nExiting App in 10 msec...");
+    printf("\nExiting App in 10 msec...\n");
     Sleep(10);
 
     return 0;
