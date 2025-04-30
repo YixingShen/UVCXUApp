@@ -53,6 +53,7 @@ WCHAR *szFriendlyName = NULL;
 
 //Other variables
 UINT32 noOfVideoDevices = 0;
+BOOL WINAPI CtrlHandler(DWORD fdwCtrlType);
 
 #define CAMERA_NAME "TinyUSB UVC"
 
@@ -220,6 +221,7 @@ int main(int argc, char **argv)
 
     //Get all video devices
     GetVideoDevices();
+    SetConsoleCtrlHandler(CtrlHandler, TRUE);
 
     printf("Video Devices connected:\n");
     for (UINT32 i = 0; i < noOfVideoDevices; i++)
@@ -558,4 +560,18 @@ HRESULT SetGetExtensionUnit(GUID xuGuid, DWORD dwExtensionNode, ULONG xuProperty
 done:
     SafeRelease(&ks_control);
     return hr;
+}
+
+BOOL WINAPI CtrlHandler(DWORD fdwCtrlType)
+{
+    switch (fdwCtrlType)
+    {
+    case CTRL_C_EVENT:
+    case CTRL_CLOSE_EVENT:
+        CoUninitialize();
+        return TRUE;
+
+    default:
+        return FALSE;
+    }
 }
