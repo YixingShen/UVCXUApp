@@ -427,6 +427,7 @@ HRESULT GetVideoDevices(void)
                     noOfVideoDevices++;
                 }
             }
+            VariantClear(&varName);
             pPropBag->Release();
         }
         pMoniker->Release();
