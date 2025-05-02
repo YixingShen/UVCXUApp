@@ -411,13 +411,13 @@ HRESULT GetVideoDevices(void)
         if (SUCCEEDED(hr))
         {
             VARIANT varName;
-            LPOLESTR strName = NULL;
+            //LPOLESTR strName = NULL;
             VariantInit(&varName);
             hr = pPropBag->Read(L"FriendlyName", &varName, 0);
             if (SUCCEEDED(hr))
             {
                 // Display the name in your UI somehow.
-                hr = pMoniker->GetDisplayName(NULL, NULL, &strName);
+                //hr = pMoniker->GetDisplayName(NULL, NULL, &strName);
 
                 USES_CONVERSION;
                 //LPTSTR DevicePath = OLE2T(strName);
